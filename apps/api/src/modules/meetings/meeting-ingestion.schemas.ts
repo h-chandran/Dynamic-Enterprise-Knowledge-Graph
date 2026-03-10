@@ -20,6 +20,7 @@ export const employeeMetadataSchema = z.object({
 
 export const ingestMeetingSchema = z
   .object({
+    meetingType: z.enum(["employee_check_in", "other"]).default("employee_check_in"),
     source: z.string().min(1),
     externalMeetingId: z.string().min(1).optional(),
     title: z.string().min(1).optional(),

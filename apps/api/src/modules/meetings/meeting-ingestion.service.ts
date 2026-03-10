@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { getPostgresPool } from "../../infrastructure/database/postgres.js";
 import type { IngestMeetingRequest } from "./meeting-ingestion.schemas.js";
+import { defaultTranscriptChunkingPipeline } from "./transcript-chunking.js";
 
 interface CreateMeetingResult {
   meetingId: string;
@@ -24,6 +25,7 @@ const ensureMeetingTables = async (client: PoolClient) => {
   await client.query(`
     CREATE TABLE IF NOT EXISTS meetings (
       id TEXT PRIMARY KEY,
+      meeting_type TEXT NOT NULL DEFAULT 'employee_check_in',
       source TEXT NOT NULL,
       external_meeting_id TEXT,
       title TEXT,
@@ -37,6 +39,11 @@ const ensureMeetingTables = async (client: PoolClient) => {
   `);
 
   await client.query(`
+    ALTER TABLE meetings
+    ADD COLUMN IF NOT EXISTS meeting_type TEXT NOT NULL DEFAULT 'employee_check_in';
+  `);
+
+  await client.query(`
     CREATE TABLE IF NOT EXISTS meeting_participants (
       id BIGSERIAL PRIMARY KEY,
       meeting_id TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
@@ -46,6 +53,18 @@ const ensureMeetingTables = async (client: PoolClient) => {
       employee_title TEXT,
       employee_department TEXT,
       metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+    );
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS meeting_transcript_chunks (
+      chunk_id TEXT PRIMARY KEY,
+      meeting_id TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+      chunk_order INTEGER NOT NULL,
+      category TEXT NOT NULL CHECK (category IN ('active_work', 'progress_update', 'blocker', 'dependency', 'skill_gap', 'uncertainty')),
+      chunk_text TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (meeting_id, chunk_order)
     );
   `);
 
@@ -65,6 +84,10 @@ const ensureMeetingTables = async (client: PoolClient) => {
 
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_meeting_participants_meeting_id ON meeting_participants (meeting_id);
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_meeting_chunks_meeting_order ON meeting_transcript_chunks (meeting_id, chunk_order);
   `);
 
   tablesEnsured = true;
@@ -94,6 +117,7 @@ export class MeetingIngestionService {
         `
           INSERT INTO meetings (
             id,
+            meeting_type,
             source,
             external_meeting_id,
             title,
@@ -103,10 +127,11 @@ export class MeetingIngestionService {
             meeting_ended_at,
             transcript_timestamps
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
         `,
         [
           meetingId,
+          input.meetingType,
           input.source,
           input.externalMeetingId ?? null,
           input.title ?? null,
@@ -117,6 +142,29 @@ export class MeetingIngestionService {
           JSON.stringify(input.transcriptTimestamps)
         ]
       );
+
+      if (input.meetingType === "employee_check_in") {
+        const classifiedChunks = defaultTranscriptChunkingPipeline.createClassifiedChunks({
+          meetingId,
+          transcriptText: input.transcriptText
+        });
+
+        for (const chunk of classifiedChunks) {
+          await client.query(
+            `
+              INSERT INTO meeting_transcript_chunks (
+                chunk_id,
+                meeting_id,
+                chunk_order,
+                category,
+                chunk_text
+              )
+              VALUES ($1, $2, $3, $4, $5)
+            `,
+            [chunk.chunkId, meetingId, chunk.chunkOrder, chunk.category, chunk.text]
+          );
+        }
+      }
 
       for (const employee of input.employees) {
         await client.query(
