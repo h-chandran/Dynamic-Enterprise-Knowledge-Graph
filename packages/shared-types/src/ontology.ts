@@ -118,6 +118,16 @@ export interface UpdateEventNodeProperties {
   occurredAt: string;
   actorId: string;
   summary: string;
+  meetingId?: string;
+  employeeId?: string;
+  extractionRunId?: string;
+  transcriptId?: string;
+  extractedAt?: string;
+  modelProvider?: string;
+  modelName?: string;
+  modelVersion?: string;
+  evidenceSpanIds?: string[];
+  supportingChunkIds?: string[];
 }
 
 export type PersonNode = BaseNode<"Person", PersonNodeProperties>;
