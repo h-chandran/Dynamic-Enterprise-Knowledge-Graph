@@ -24,6 +24,7 @@ const entityPropertySchemas = {
   Person: z
     .object({
       fullName: nonEmptyStringSchema,
+      employeeId: nonEmptyStringSchema.optional(),
       email: z.string().email().optional(),
       title: nonEmptyStringSchema.optional(),
       timezone: nonEmptyStringSchema.optional(),
@@ -362,6 +363,7 @@ export const transcriptExtractionExamples = {
     aliases: ["Ada"],
     properties: {
       fullName: "Ada Lovelace",
+      employeeId: "E-1024",
       title: "Engineering Manager",
       email: "ada@example.com",
       timezone: "America/Chicago",
@@ -440,11 +442,12 @@ export const transcriptExtractionExamples = {
         nodeType: "Person",
         label: "Ada Lovelace",
         aliases: ["Ada"],
-        properties: {
-          fullName: "Ada Lovelace",
-          title: "Engineering Manager",
-          email: "ada@example.com",
-          timezone: "America/Chicago",
+          properties: {
+            fullName: "Ada Lovelace",
+            employeeId: "E-1024",
+            title: "Engineering Manager",
+            email: "ada@example.com",
+            timezone: "America/Chicago",
         },
         resolution: {
           action: "match_existing",

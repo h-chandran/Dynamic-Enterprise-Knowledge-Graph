@@ -66,6 +66,7 @@ export interface BaseNode<TType extends NodeType, TProperties extends object>
 
 export interface PersonNodeProperties {
   fullName: string;
+  employeeId?: string;
   email?: string;
   title?: string;
   timezone?: string;
