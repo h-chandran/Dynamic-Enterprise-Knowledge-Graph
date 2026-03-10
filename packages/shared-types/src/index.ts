@@ -14,4 +14,6 @@ export interface TranscriptExtractionJob {
 }
 
 export * from "./ontology.js";
+export * from "./analytics.js";
 export * from "./transcript-extraction.js";
+export * from "./visualization.js";
