@@ -6,7 +6,10 @@ export default function HomePage() {
   return (
     <main className="container">
       <h1>{appEnv.NEXT_PUBLIC_APP_NAME}</h1>
-      <p>Monorepo frontend scaffold. Business logic and product workflows are intentionally unimplemented.</p>
+      <p>
+        Monorepo frontend scaffold. Business logic and product workflows are intentionally
+        unimplemented.
+      </p>
       <section>
         <h2>Feature Modules</h2>
         <ul>

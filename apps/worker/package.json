@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "lint": "node -e \"console.log('Lint rules not configured yet for @dekgraph/worker')\"",
+    "lint": "eslint src --ext .ts",
     "clean": "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item -Recurse -Force dist }\""
   },
   "dependencies": {
