@@ -7,7 +7,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
-  TRANSCRIPT_PROVIDER: z.string().min(1).default("placeholder")
+  TRANSCRIPT_PROVIDER: z.string().min(1).default("placeholder"),
+  EXTRACTION_PROMPT_VERSION: z.string().min(1).default("phase4-v1"),
+  POSTGRES_URL: z.string().url().optional()
 });
 
 const parseResult = envSchema.safeParse(process.env);
