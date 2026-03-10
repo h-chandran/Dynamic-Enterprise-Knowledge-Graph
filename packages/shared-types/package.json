@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./ontology": {
+      "types": "./dist/ontology.d.ts",
+      "default": "./dist/ontology.js"
     }
   },
   "scripts": {

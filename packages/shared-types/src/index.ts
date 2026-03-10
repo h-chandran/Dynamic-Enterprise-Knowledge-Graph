@@ -12,3 +12,5 @@ export interface TranscriptExtractionJob {
   requestedBy: string;
   createdAt: string;
 }
+
+export * from "./ontology.js";
