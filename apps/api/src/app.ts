@@ -3,6 +3,7 @@ import { env } from "./config/env.js";
 import { closeNeo4jConnection } from "./infrastructure/database/neo4j.js";
 import { closePostgresConnection } from "./infrastructure/database/postgres.js";
 import { healthRoute } from "./routes/health.js";
+import { extractionAdminRoute } from "./routes/extraction-admin.js";
 import { meetingsRoute } from "./routes/meetings.js";
 
 export const createApiServer = () => {
@@ -14,6 +15,7 @@ export const createApiServer = () => {
 
   app.register(healthRoute);
   app.register(meetingsRoute);
+  app.register(extractionAdminRoute);
 
   app.addHook("onClose", async () => {
     await Promise.all([closeNeo4jConnection(), closePostgresConnection()]);

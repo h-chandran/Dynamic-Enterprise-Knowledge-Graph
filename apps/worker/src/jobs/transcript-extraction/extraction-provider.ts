@@ -17,11 +17,18 @@ export interface ExtractionPassInput {
   extractionRunId: string;
   transcriptId: string;
   chunk: TranscriptChunkInput;
+  retry?: RetryContext;
 }
 
 export interface ProviderPassOutput {
   rawOutput: unknown;
   parsedOutput: unknown;
+}
+
+export interface RetryContext {
+  attempt: number;
+  previousErrors: string[];
+  correctionPrompt?: string;
 }
 
 export interface ExtractionModelProvider {
@@ -96,7 +103,7 @@ export class PlaceholderExtractionProvider implements ExtractionModelProvider {
 
     return {
       rawOutput: {
-        prompt: "placeholder-entity-pass",
+        prompt: buildPrompt("placeholder-entity-pass", input.retry),
         completion: entities,
       },
       parsedOutput: entities,
@@ -136,7 +143,7 @@ export class PlaceholderExtractionProvider implements ExtractionModelProvider {
 
     return {
       rawOutput: {
-        prompt: "placeholder-relationship-pass",
+        prompt: buildPrompt("placeholder-relationship-pass", input.retry),
         completion: relationships,
       },
       parsedOutput: relationships,
@@ -195,7 +202,7 @@ export class PlaceholderExtractionProvider implements ExtractionModelProvider {
 
     return {
       rawOutput: {
-        prompt: "placeholder-event-pass",
+        prompt: buildPrompt("placeholder-event-pass", input.retry),
         completion: events,
       },
       parsedOutput: events,
@@ -232,4 +239,13 @@ function slugify(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+function buildPrompt(basePrompt: string, retry: RetryContext | undefined): string {
+  if (!retry || retry.attempt <= 1) {
+    return basePrompt;
+  }
+
+  const errors = retry.previousErrors.length > 0 ? retry.previousErrors.join(" | ") : "no previous errors captured";
+  return `${basePrompt} [retry=${retry.attempt}] [correction=${retry.correctionPrompt ?? "return valid schema output"}] [errors=${errors}]`;
 }

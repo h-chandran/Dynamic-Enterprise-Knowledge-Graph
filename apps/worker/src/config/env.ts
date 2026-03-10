@@ -8,6 +8,7 @@ const envSchema = z.object({
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
   TRANSCRIPT_PROVIDER: z.string().min(1).default("placeholder"),
+  EXTRACTION_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
   EXTRACTION_PROMPT_VERSION: z.string().min(1).default("phase4-v1"),
   POSTGRES_URL: z.string().url().optional()
 });
