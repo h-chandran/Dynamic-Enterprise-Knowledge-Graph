@@ -13,7 +13,14 @@
     "./ontology": {
       "types": "./dist/ontology.d.ts",
       "default": "./dist/ontology.js"
+    },
+    "./transcript-extraction": {
+      "types": "./dist/transcript-extraction.d.ts",
+      "default": "./dist/transcript-extraction.js"
     }
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
