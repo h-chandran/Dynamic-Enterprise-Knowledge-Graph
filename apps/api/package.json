@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
+    "neo4j:schema": "tsx src/scripts/setup-neo4j-schema.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
     "clean": "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item -Recurse -Force dist }\""

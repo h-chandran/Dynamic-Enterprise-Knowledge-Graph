@@ -14,6 +14,7 @@ Production-oriented monorepo scaffold for an enterprise knowledge graph product.
 - Environment variable loading from local service `.env` and root `.env`
 - Runtime env validation with clear missing/invalid variable errors
 - Neo4j connection utility (`apps/api/src/infrastructure/database/neo4j.ts`)
+- Neo4j schema migration runner + Cypher migrations (`apps/api/src/infrastructure/database/neo4j-schema.ts`)
 - Optional Postgres connection utility (`apps/api/src/infrastructure/database/postgres.ts`)
 - Backend health endpoint (`GET /health`) with dependency status checks
 - TypeScript path aliases:
@@ -58,6 +59,12 @@ cp apps/web/.env.example apps/web/.env.local
 
 ```bash
 pnpm dev
+```
+
+4. Initialize Neo4j constraints and indexes:
+
+```bash
+pnpm --filter @dekgraph/api neo4j:schema
 ```
 
 ## Useful Commands

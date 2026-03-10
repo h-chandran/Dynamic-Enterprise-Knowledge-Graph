@@ -11,6 +11,7 @@ const envSchema = z.object({
   NEO4J_URI: z.string().url(),
   NEO4J_USERNAME: z.string().min(1),
   NEO4J_PASSWORD: z.string().min(1),
+  NEO4J_DATABASE: z.string().min(1).default("neo4j"),
   POSTGRES_URL: z.string().url().optional()
 });
 

@@ -1,0 +1,35 @@
+CREATE CONSTRAINT person_id_unique IF NOT EXISTS
+FOR (n:Person)
+REQUIRE n.id IS UNIQUE;
+
+CREATE CONSTRAINT team_id_unique IF NOT EXISTS
+FOR (n:Team)
+REQUIRE n.id IS UNIQUE;
+
+CREATE CONSTRAINT project_id_unique IF NOT EXISTS
+FOR (n:Project)
+REQUIRE n.id IS UNIQUE;
+
+CREATE CONSTRAINT task_id_unique IF NOT EXISTS
+FOR (n:Task)
+REQUIRE n.id IS UNIQUE;
+
+CREATE CONSTRAINT blocker_id_unique IF NOT EXISTS
+FOR (n:Blocker)
+REQUIRE n.id IS UNIQUE;
+
+CREATE CONSTRAINT skill_id_unique IF NOT EXISTS
+FOR (n:Skill)
+REQUIRE n.id IS UNIQUE;
+
+CREATE CONSTRAINT meeting_id_unique IF NOT EXISTS
+FOR (n:Meeting)
+REQUIRE n.id IS UNIQUE;
+
+CREATE CONSTRAINT transcript_chunk_id_unique IF NOT EXISTS
+FOR (n:TranscriptChunk)
+REQUIRE n.id IS UNIQUE;
+
+CREATE CONSTRAINT update_event_id_unique IF NOT EXISTS
+FOR (n:UpdateEvent)
+REQUIRE n.id IS UNIQUE;
