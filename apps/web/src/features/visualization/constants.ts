@@ -1,4 +1,4 @@
-import type { NodeType } from "@shared-types";
+import type { NodeType, RelationshipType } from "@shared-types";
 
 export interface EntityVisualStyle {
   background: string;
@@ -76,4 +76,32 @@ export const ENTITY_STYLES: Record<NodeType, EntityVisualStyle> = {
     text: "#166534",
     accent: "#4ade80",
   },
+};
+
+export const RELATIONSHIP_TYPE_ORDER: RelationshipType[] = [
+  "MEMBER_OF",
+  "WORKS_ON",
+  "OWNS",
+  "PART_OF",
+  "BLOCKED_BY",
+  "HAS_SKILL",
+  "ASSERTED",
+  "SUPPORTS",
+];
+
+export const RELATIONSHIP_TYPE_LABELS: Record<RelationshipType, string> = {
+  MEMBER_OF: "Member Of",
+  WORKS_ON: "Works On",
+  OWNS: "Owns",
+  PART_OF: "Part Of",
+  BLOCKED_BY: "Blocked By",
+  HAS_SKILL: "Has Skill",
+  ASSERTED: "Asserted",
+  SUPPORTS: "Supports",
+};
+
+export const EDGE_GROUPS = {
+  blockers: ["BLOCKED_BY"] as const,
+  dependencies: ["PART_OF"] as const,
+  collaboration: ["MEMBER_OF", "WORKS_ON", "OWNS", "HAS_SKILL"] as const,
 };

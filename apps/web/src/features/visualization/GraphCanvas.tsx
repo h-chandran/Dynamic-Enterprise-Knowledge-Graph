@@ -5,33 +5,17 @@ import ReactFlow, { Background, Panel, type NodeMouseHandler } from "reactflow";
 import type { VisualizationSubgraphResponse } from "@shared-types";
 import { mapSubgraphToGraphElements } from "./graph-adapter";
 import { ENTITY_STYLES, ENTITY_TYPE_LABELS, ENTITY_TYPE_ORDER } from "./constants";
-import type { SelectedGraphNode } from "./NodeDetailsPanel";
+import { NodeDetailsPanel } from "./NodeDetailsPanel";
 
 interface GraphCanvasProps {
   subgraph: VisualizationSubgraphResponse;
   selectedNodeId?: string;
   onNodeSelect: Dispatch<SetStateAction<string | undefined>>;
+  resetVersion: number;
 }
 
-export function GraphCanvas({ subgraph, selectedNodeId, onNodeSelect }: GraphCanvasProps) {
+export function GraphCanvas({ subgraph, selectedNodeId, onNodeSelect, resetVersion }: GraphCanvasProps) {
   const { nodes, edges } = useMemo(() => mapSubgraphToGraphElements(subgraph), [subgraph]);
-
-  const selectedNode = useMemo<SelectedGraphNode | undefined>(() => {
-    if (!selectedNodeId) {
-      return undefined;
-    }
-
-    const node = subgraph.nodes.find((candidate) => candidate.id === selectedNodeId);
-
-    if (!node) {
-      return undefined;
-    }
-
-    return {
-      node,
-      metadata: subgraph.nodeMetadata[node.id],
-    };
-  }, [selectedNodeId, subgraph]);
 
   const visibleNodes = useMemo(
     () =>
@@ -50,6 +34,7 @@ export function GraphCanvas({ subgraph, selectedNodeId, onNodeSelect }: GraphCan
     <div className="visualization-frame">
       <div className="visualization-canvas">
         <ReactFlow
+          key={`graph-view-${resetVersion}`}
           nodes={visibleNodes}
           edges={edges}
           nodesDraggable={false}
@@ -69,7 +54,11 @@ export function GraphCanvas({ subgraph, selectedNodeId, onNodeSelect }: GraphCan
         </ReactFlow>
       </div>
       <aside className="visualization-sidebar">
-        <NodeSummaryPanel selectedNode={selectedNode} />
+        <NodeDetailsPanel
+          subgraph={subgraph}
+          selectedNodeId={selectedNodeId}
+          onNodeSelect={onNodeSelect}
+        />
       </aside>
     </div>
   );
@@ -97,53 +86,17 @@ function GraphLegend() {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function NodeSummaryPanel({ selectedNode }: { selectedNode?: SelectedGraphNode }) {
-  if (!selectedNode) {
-    return (
-      <div className="details-card details-card-empty">
-        <h2>Node Details</h2>
-        <p>Click a node in the graph to inspect its metadata and recent activity.</p>
+      <div className="legend-divider" />
+      <div className="legend-recency">
+        <div className="legend-item">
+          <span className="legend-line legend-line-recent" />
+          <span>Recent activity</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-line legend-line-stale" />
+          <span>Stale activity</span>
+        </div>
       </div>
-    );
-  }
-
-  const { node, metadata } = selectedNode;
-
-  return (
-    <div className="details-card">
-      <div className="details-badge">{ENTITY_TYPE_LABELS[node.type]}</div>
-      <h2>{node.label}</h2>
-      {node.secondaryLabel ? <p className="details-secondary">{node.secondaryLabel}</p> : null}
-      <dl className="details-list">
-        <div>
-          <dt>Node ID</dt>
-          <dd>{node.id}</dd>
-        </div>
-        <div>
-          <dt>Degree</dt>
-          <dd>{metadata?.degree ?? 0}</dd>
-        </div>
-        <div>
-          <dt>Incoming</dt>
-          <dd>{metadata?.incomingEdges ?? 0}</dd>
-        </div>
-        <div>
-          <dt>Outgoing</dt>
-          <dd>{metadata?.outgoingEdges ?? 0}</dd>
-        </div>
-        <div>
-          <dt>Status</dt>
-          <dd>{metadata?.status ?? "N/A"}</dd>
-        </div>
-        <div>
-          <dt>Recent updates</dt>
-          <dd>{metadata?.recentUpdateCount ?? 0}</dd>
-        </div>
-      </dl>
     </div>
   );
 }

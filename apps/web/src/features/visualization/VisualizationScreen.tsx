@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
 import "reactflow/dist/style.css";
 import type { VisualizationSubgraphResponse } from "@shared-types";
 import { fetchCompanyOverviewSubgraph } from "./api";
 import { GraphCanvas } from "./GraphCanvas";
+import { GraphControls } from "./GraphControls";
+import { buildDefaultGraphFilterState, filterSubgraph, type GraphFilterState } from "./graph-filters";
 
 interface VisualizationScreenProps {
   appName: string;
@@ -15,6 +17,9 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
   const [error, setError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
+  const [filters, setFilters] = useState<GraphFilterState | null>(null);
+  const [resetVersion, setResetVersion] = useState(0);
+  const [isPending, startUiTransition] = useTransition();
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -26,6 +31,7 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
       .then((response) => {
         setSubgraph(response);
         setSelectedNodeId(response.focusNodeId ?? response.nodes[0]?.id);
+        setFilters(buildDefaultGraphFilterState(response));
       })
       .catch((fetchError: unknown) => {
         if (abortController.signal.aborted) {
@@ -45,6 +51,8 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
     };
   }, []);
 
+  const deferredFilters = useDeferredValue(filters);
+
   const graphStats = useMemo(() => {
     if (!subgraph) {
       return null;
@@ -56,6 +64,48 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
       lastUpdated: subgraph.timestamps.generatedAt,
     };
   }, [subgraph]);
+
+  const filteredSubgraph = useMemo(() => {
+    if (!subgraph || !deferredFilters) {
+      return null;
+    }
+
+    return filterSubgraph(subgraph, deferredFilters);
+  }, [deferredFilters, subgraph]);
+
+  useEffect(() => {
+    if (!filteredSubgraph) {
+      return;
+    }
+
+    if (selectedNodeId && filteredSubgraph.nodes.some((node) => node.id === selectedNodeId)) {
+      return;
+    }
+
+    setSelectedNodeId(filteredSubgraph.focusNodeId ?? filteredSubgraph.nodes[0]?.id);
+  }, [filteredSubgraph, selectedNodeId]);
+
+  const availableNodeTypes = useMemo(
+    () => (subgraph ? Array.from(new Set(subgraph.nodes.map((node) => node.type))) : []),
+    [subgraph]
+  );
+
+  const availableEdgeTypes = useMemo(
+    () => (subgraph ? Array.from(new Set(subgraph.edges.map((edge) => edge.type))) : []),
+    [subgraph]
+  );
+
+  const handleResetView = () => {
+    if (!subgraph) {
+      return;
+    }
+
+    startTransition(() => {
+      setFilters(buildDefaultGraphFilterState(subgraph));
+      setSelectedNodeId(subgraph.focusNodeId ?? subgraph.nodes[0]?.id);
+      setResetVersion((current) => current + 1);
+    });
+  };
 
   return (
     <section className="visualization-page">
@@ -92,11 +142,33 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
       ) : null}
 
       {!isLoading && !error && subgraph ? (
-        <GraphCanvas
-          subgraph={subgraph}
-          selectedNodeId={selectedNodeId}
-          onNodeSelect={setSelectedNodeId}
-        />
+        <>
+          {filters ? (
+            <GraphControls
+              filters={filters}
+              availableNodeTypes={availableNodeTypes}
+              availableEdgeTypes={availableEdgeTypes}
+              setFilters={(nextValue) => {
+                startUiTransition(() => {
+                  setFilters((current) => {
+                    const baseState = current ?? buildDefaultGraphFilterState(subgraph);
+                    return typeof nextValue === "function" ? nextValue(baseState) : nextValue;
+                  });
+                });
+              }}
+              onReset={handleResetView}
+              isUpdating={isPending}
+            />
+          ) : null}
+          {filteredSubgraph ? (
+            <GraphCanvas
+              subgraph={filteredSubgraph}
+              selectedNodeId={selectedNodeId}
+              onNodeSelect={setSelectedNodeId}
+              resetVersion={resetVersion}
+            />
+          ) : null}
+        </>
       ) : null}
     </section>
   );
