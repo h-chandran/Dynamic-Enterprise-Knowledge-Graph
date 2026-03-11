@@ -7,6 +7,13 @@ import { fetchCompanyOverviewSubgraph } from "./api";
 import { GraphCanvas } from "./GraphCanvas";
 import { GraphControls } from "./GraphControls";
 import { buildDefaultGraphFilterState, filterSubgraph, type GraphFilterState } from "./graph-filters";
+import { TemporalControls } from "./TemporalControls";
+import {
+  buildInitialTemporalState,
+  clampTemporalState,
+  deriveTemporalSubgraph,
+  type TemporalControlsState,
+} from "./temporal-exploration";
 
 interface VisualizationScreenProps {
   appName: string;
@@ -18,6 +25,7 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
   const [error, setError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<GraphFilterState | null>(null);
+  const [temporalState, setTemporalState] = useState<TemporalControlsState | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
   const [isPending, startUiTransition] = useTransition();
 
@@ -32,6 +40,7 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
         setSubgraph(response);
         setSelectedNodeId(response.focusNodeId ?? response.nodes[0]?.id);
         setFilters(buildDefaultGraphFilterState(response));
+        setTemporalState(buildInitialTemporalState(response));
       })
       .catch((fetchError: unknown) => {
         if (abortController.signal.aborted) {
@@ -52,6 +61,7 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
   }, []);
 
   const deferredFilters = useDeferredValue(filters);
+  const deferredTemporalState = useDeferredValue(temporalState);
 
   const graphStats = useMemo(() => {
     if (!subgraph) {
@@ -73,17 +83,61 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
     return filterSubgraph(subgraph, deferredFilters);
   }, [deferredFilters, subgraph]);
 
+  const temporalView = useMemo(() => {
+    if (!filteredSubgraph || !deferredTemporalState) {
+      return null;
+    }
+
+    return deriveTemporalSubgraph(filteredSubgraph, deferredTemporalState);
+  }, [deferredTemporalState, filteredSubgraph]);
+
   useEffect(() => {
-    if (!filteredSubgraph) {
+    if (!temporalView) {
       return;
     }
 
-    if (selectedNodeId && filteredSubgraph.nodes.some((node) => node.id === selectedNodeId)) {
+    if (selectedNodeId && temporalView.visibleSubgraph.nodes.some((node) => node.id === selectedNodeId)) {
       return;
     }
 
-    setSelectedNodeId(filteredSubgraph.focusNodeId ?? filteredSubgraph.nodes[0]?.id);
-  }, [filteredSubgraph, selectedNodeId]);
+    setSelectedNodeId(temporalView.visibleSubgraph.focusNodeId ?? temporalView.visibleSubgraph.nodes[0]?.id);
+  }, [selectedNodeId, temporalView]);
+
+  useEffect(() => {
+    if (!subgraph || !temporalState) {
+      return;
+    }
+
+    const clampedState = clampTemporalState(temporalState, subgraph);
+    if (clampedState.selectedIndex !== temporalState.selectedIndex) {
+      setTemporalState(clampedState);
+    }
+  }, [subgraph, temporalState]);
+
+  useEffect(() => {
+    if (!temporalState?.isReplayActive) {
+      return;
+    }
+
+    const maxIndex = temporalView ? temporalView.timelinePoints.length - 1 : 0;
+    if (temporalState.selectedIndex >= maxIndex) {
+      setTemporalState((current) => (current ? { ...current, isReplayActive: false } : current));
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setTemporalState((current) =>
+        current
+          ? {
+              ...current,
+              selectedIndex: Math.min(current.selectedIndex + 1, maxIndex),
+            }
+          : current
+      );
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [temporalState, temporalView]);
 
   const availableNodeTypes = useMemo(
     () => (subgraph ? Array.from(new Set(subgraph.nodes.map((node) => node.type))) : []),
@@ -102,6 +156,7 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
 
     startTransition(() => {
       setFilters(buildDefaultGraphFilterState(subgraph));
+      setTemporalState(buildInitialTemporalState(subgraph));
       setSelectedNodeId(subgraph.focusNodeId ?? subgraph.nodes[0]?.id);
       setResetVersion((current) => current + 1);
     });
@@ -160,12 +215,68 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
               isUpdating={isPending}
             />
           ) : null}
-          {filteredSubgraph ? (
+          {temporalView ? (
+            <TemporalControls
+              selectedAt={temporalView.selectedAt}
+              windowStart={temporalView.windowStart}
+              windowHours={temporalState?.windowHours ?? 48}
+              activeUpdateCount={temporalView.activeUpdateCount}
+              selectedIndex={temporalState?.selectedIndex ?? 0}
+              maxIndex={Math.max(temporalView.timelinePoints.length - 1, 0)}
+              isReplayActive={temporalState?.isReplayActive ?? false}
+              onTimelineChange={(nextIndex) =>
+                setTemporalState((current) =>
+                  current
+                    ? {
+                        ...current,
+                        selectedIndex:
+                          typeof nextIndex === "function"
+                            ? nextIndex(current.selectedIndex)
+                            : nextIndex,
+                        isReplayActive: false,
+                      }
+                    : current
+                )
+              }
+              onWindowHoursChange={(nextWindowHours) =>
+                setTemporalState((current) =>
+                  current
+                    ? {
+                        ...current,
+                        windowHours:
+                          typeof nextWindowHours === "function"
+                            ? nextWindowHours(current.windowHours)
+                            : nextWindowHours,
+                      }
+                    : current
+                )
+              }
+              onReplayToggle={() =>
+                setTemporalState((current) =>
+                  current
+                    ? {
+                        ...current,
+                        isReplayActive: !current.isReplayActive,
+                        selectedIndex:
+                          current.selectedIndex >= Math.max(temporalView.timelinePoints.length - 1, 0)
+                            ? 0
+                            : current.selectedIndex,
+                      }
+                    : current
+                )
+              }
+            />
+          ) : null}
+          {temporalView ? (
             <GraphCanvas
-              subgraph={filteredSubgraph}
+              subgraph={temporalView.visibleSubgraph}
               selectedNodeId={selectedNodeId}
               onNodeSelect={setSelectedNodeId}
               resetVersion={resetVersion}
+              temporalContext={{
+                highlightedNodeIds: temporalView.highlightedNodeIds,
+                highlightedEdgeIds: temporalView.highlightedEdgeIds,
+              }}
             />
           ) : null}
         </>

@@ -37,7 +37,15 @@ export interface GraphElements {
   edges: Edge<GraphEdgeData>[];
 }
 
-export function mapSubgraphToGraphElements(subgraph: VisualizationSubgraphResponse): GraphElements {
+export interface GraphTemporalContext {
+  highlightedNodeIds?: Set<string>;
+  highlightedEdgeIds?: Set<string>;
+}
+
+export function mapSubgraphToGraphElements(
+  subgraph: VisualizationSubgraphResponse,
+  temporalContext?: GraphTemporalContext
+): GraphElements {
   const nodesByType = groupNodesByType(subgraph.nodes);
   const typeOrder = [
     ...ENTITY_TYPE_ORDER,
@@ -52,6 +60,7 @@ export function mapSubgraphToGraphElements(subgraph: VisualizationSubgraphRespon
       const isFocus = subgraph.focusNodeId === node.id;
       const metadata = subgraph.nodeMetadata[node.id];
       const freshness = getFreshness(metadata, subgraph.timestamps.recentWindowStart);
+      const isHighlighted = temporalContext?.highlightedNodeIds?.has(node.id) ?? false;
 
       return {
         id: node.id,
@@ -80,6 +89,8 @@ export function mapSubgraphToGraphElements(subgraph: VisualizationSubgraphRespon
           opacity: freshness === "recent" ? 1 : 0.72,
           boxShadow: isFocus
             ? `0 0 0 4px ${style.accent}55`
+            : isHighlighted
+              ? `0 0 0 3px ${style.accent}66, 0 18px 40px rgba(15, 23, 42, 0.1)`
             : freshness === "recent"
               ? "0 18px 40px rgba(15, 23, 42, 0.08)"
               : "0 10px 26px rgba(15, 23, 42, 0.06)",
@@ -112,9 +123,18 @@ export function mapSubgraphToGraphElements(subgraph: VisualizationSubgraphRespon
     },
     style: {
       stroke: getEdgeStroke(edge, subgraph.edgeMetadata[edge.id], subgraph.timestamps.recentWindowStart),
-      strokeWidth: edge.type === "OWNS" ? 2.4 : 1.8,
+      strokeWidth:
+        (temporalContext?.highlightedEdgeIds?.has(edge.id) ?? false)
+          ? 3.2
+          : edge.type === "OWNS"
+            ? 2.4
+            : 1.8,
       strokeDasharray: isRecentEdge(subgraph.edgeMetadata[edge.id], subgraph.timestamps.recentWindowStart) ? undefined : "6 4",
-      opacity: isRecentEdge(subgraph.edgeMetadata[edge.id], subgraph.timestamps.recentWindowStart) ? 0.95 : 0.5,
+      opacity: (temporalContext?.highlightedEdgeIds?.has(edge.id) ?? false)
+        ? 1
+        : isRecentEdge(subgraph.edgeMetadata[edge.id], subgraph.timestamps.recentWindowStart)
+          ? 0.95
+          : 0.5,
     },
     data: {
       label: RELATIONSHIP_TYPE_LABELS[edge.type],

@@ -3,7 +3,7 @@
 import { useMemo, type Dispatch, type SetStateAction } from "react";
 import ReactFlow, { Background, Panel, type NodeMouseHandler } from "reactflow";
 import type { VisualizationSubgraphResponse } from "@shared-types";
-import { mapSubgraphToGraphElements } from "./graph-adapter";
+import { mapSubgraphToGraphElements, type GraphTemporalContext } from "./graph-adapter";
 import { ENTITY_STYLES, ENTITY_TYPE_LABELS, ENTITY_TYPE_ORDER } from "./constants";
 import { NodeDetailsPanel } from "./NodeDetailsPanel";
 
@@ -12,10 +12,20 @@ interface GraphCanvasProps {
   selectedNodeId?: string;
   onNodeSelect: Dispatch<SetStateAction<string | undefined>>;
   resetVersion: number;
+  temporalContext?: GraphTemporalContext;
 }
 
-export function GraphCanvas({ subgraph, selectedNodeId, onNodeSelect, resetVersion }: GraphCanvasProps) {
-  const { nodes, edges } = useMemo(() => mapSubgraphToGraphElements(subgraph), [subgraph]);
+export function GraphCanvas({
+  subgraph,
+  selectedNodeId,
+  onNodeSelect,
+  resetVersion,
+  temporalContext,
+}: GraphCanvasProps) {
+  const { nodes, edges } = useMemo(
+    () => mapSubgraphToGraphElements(subgraph, temporalContext),
+    [subgraph, temporalContext]
+  );
 
   const visibleNodes = useMemo(
     () =>
