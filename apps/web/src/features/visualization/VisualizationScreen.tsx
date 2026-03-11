@@ -2,10 +2,11 @@
 
 import { startTransition, useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
 import "reactflow/dist/style.css";
-import type { VisualizationSubgraphResponse } from "@shared-types";
-import { fetchCompanyOverviewSubgraph } from "./api";
+import type { InsightsDashboardResponse, VisualizationSubgraphResponse } from "@shared-types";
+import { fetchCompanyOverviewSubgraph, fetchInsightsDashboard } from "./api";
 import { GraphCanvas } from "./GraphCanvas";
 import { GraphControls } from "./GraphControls";
+import { InsightCards } from "./InsightCards";
 import { buildDefaultGraphFilterState, filterSubgraph, type GraphFilterState } from "./graph-filters";
 import { TemporalControls } from "./TemporalControls";
 import {
@@ -23,7 +24,10 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
   const [subgraph, setSubgraph] = useState<VisualizationSubgraphResponse | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
   const [error, setError] = useState<string>();
+  const [insightError, setInsightError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
+  const [insights, setInsights] = useState<InsightsDashboardResponse | null>(null);
+  const [isInsightsLoading, setIsInsightsLoading] = useState(true);
   const [filters, setFilters] = useState<GraphFilterState | null>(null);
   const [temporalState, setTemporalState] = useState<TemporalControlsState | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
@@ -34,6 +38,8 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
 
     setIsLoading(true);
     setError(undefined);
+    setIsInsightsLoading(true);
+    setInsightError(undefined);
 
     fetchCompanyOverviewSubgraph(abortController.signal)
       .then((response) => {
@@ -52,6 +58,23 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
       .finally(() => {
         if (!abortController.signal.aborted) {
           setIsLoading(false);
+        }
+      });
+
+    fetchInsightsDashboard(abortController.signal)
+      .then((response) => {
+        setInsights(response);
+      })
+      .catch((fetchError: unknown) => {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        setInsightError(fetchError instanceof Error ? fetchError.message : "Unable to load the insight layer.");
+      })
+      .finally(() => {
+        if (!abortController.signal.aborted) {
+          setIsInsightsLoading(false);
         }
       });
 
@@ -195,6 +218,22 @@ export function VisualizationScreen({ appName }: VisualizationScreenProps) {
           <p>{error}</p>
         </div>
       ) : null}
+
+      {isInsightsLoading ? (
+        <div className="status-card">
+          <h2>Loading insight layer</h2>
+          <p>Calculating evidence-backed signals and inferred staffing hypotheses.</p>
+        </div>
+      ) : null}
+
+      {!isInsightsLoading && insightError ? (
+        <div className="status-card status-card-error">
+          <h2>Insight layer unavailable</h2>
+          <p>{insightError}</p>
+        </div>
+      ) : null}
+
+      {!isInsightsLoading && !insightError && insights ? <InsightCards dashboard={insights} /> : null}
 
       {!isLoading && !error && subgraph ? (
         <>
